@@ -44,28 +44,18 @@ void* sf_malloc(size_t size) {
 
 void sf_free(void *ptr) {
 
-	if(ptr == NULL){
-		fprintf(stderr,"Cannot call sf_free with NULL\n");
+	if(!validatePTR(ptr))
 		return;
-	}
 
-	if((size_t) ptr > (size_t) heapEnd || (size_t) ptr < (size_t) heapStart){
-		fprintf(stderr,"Address not in heap range\n");
-		return;
-	}
-
-	if((size_t) ptr % 16 != 0){
-		fprintf(stderr, "Free address not aligned\n");
-		return;
-	}
-
+	//Block address -8 to get header ptr
 	sf_header* headPtr = (sf_header*)((double*) ptr - 1);
+
 	if(!isFree(headPtr)){
 		headPtr->alloc = 0;
 		sf_footer* foot = (sf_footer*) ((double*)headPtr + (headPtr->block_size <<4)/8 - 1);
 		foot->alloc = 0;
 	} else{ 
-		fprintf(stderr,"Memory was not Malloc'ed before\n");
+		fprintf(stderr,"Memory block is already free\n");
 		return;
 	}
 
@@ -246,6 +236,22 @@ bool validateSize(size_t size){
 
 }
 
+bool validatePTR(void* ptr){
+
+	if(ptr == NULL){
+		fprintf(stderr,"Cannot call sf_free with NULL\n");
+		return false;
+	} else if((size_t) ptr > (size_t) heapEnd || (size_t) ptr < (size_t) heapStart){
+		fprintf(stderr,"Address not in heap range\n");
+		return false;
+	} else if((size_t) ptr % 16 != 0){
+		fprintf(stderr, "Free address not aligned\n");
+		return false;
+	}
+
+	return true;
+}
+
 bool isFree(sf_header* ptr){
    return ptr->alloc == 0;
 }
@@ -278,10 +284,8 @@ void* createFreeListHead(size_t size){
 		freelist_head->header.alloc = 0;
 		//doesnt relal
 		freelist_head->header.block_size = (heapsize) >> 4 ;
-		printf("%p\n", freelist_head );
 
 		double* footerPointer = (double*)freelist_head + heapsize/8 - 1;
-		printf("%p\n", footerPointer );
 		sf_footer* foot = (sf_footer*) footerPointer;
 		foot->alloc = 0;
 		foot->block_size = freelist_head->header.block_size;
