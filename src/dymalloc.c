@@ -26,6 +26,8 @@ void* sf_malloc(size_t size) {
 	if(!validateSize(size))
 		return NULL;
 
+	//If this is the first call to malloc, essentially make the whole page free a huge free block.
+	//May need to bug check this for when your first call > one page.
 	if(freelist_head == NULL)
 		current_free_head = createFreeListHead(size);
 	
@@ -275,11 +277,11 @@ void* createFreeListHead(size_t size){
 
 		freelist_head->header.alloc = 0;
 		//doesnt relal
-		freelist_head->header.block_size = (heapsize - 16) >> 4;
-		// Requested block size field doesnt matter for free blocks
+		freelist_head->header.block_size = (heapsize) >> 4 ;
+		printf("%p\n", freelist_head );
 
-		double* footerPointer = (double*)freelist_head + heapsize/8 + 1;
-
+		double* footerPointer = (double*)freelist_head + heapsize/8 - 1;
+		printf("%p\n", footerPointer );
 		sf_footer* foot = (sf_footer*) footerPointer;
 		foot->alloc = 0;
 		foot->block_size = freelist_head->header.block_size;
@@ -291,15 +293,13 @@ void* findNextFit(sf_free_header* ptr, size_t size){
 
 	sf_free_header* freehead = freelist_head;
 
-	//No free-ing case
-	if(freelist_head->next == NULL){
+	//If the head fits, give the head.
+	if(freelist_head->next == NULL && ((freelist_head->header.block_size) << 4) >= size){
 		return freehead;
 	}
 
 	#ifdef NEXT
-
-	freehead = ptr;
-
+		freehead = ptr;
 	#endif /*NEXT*/
 
 	while(freehead->next != NULL){
