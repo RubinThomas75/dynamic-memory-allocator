@@ -33,7 +33,7 @@ void* sf_malloc(size_t size) {
 		heapStart = sf_sbrk(heapsize);
 		heapEnd = heapStart + heapsize;
 
-		freelist_head = (sf_free_header*)((double*) heapStart + 1); 
+		freelist_head = (sf_free_header*)((double*) heapStart); 
 
 		//Currently theres no freelist so next is null.
 		freelist_head->next = NULL;
@@ -43,7 +43,7 @@ void* sf_malloc(size_t size) {
 		freelist_head->header.block_size = (heapsize -16)>> 4;
 		// Requested block size field doesnt matter for free blocks
 
-		double* footerPointer = (double*)freelist_head + heapsize/8 - 2;
+		double* footerPointer = (double*)freelist_head + heapsize/8 + 1;
 
 		printf("%p\n", heapStart);
 		printf("%p\n", freelist_head);
@@ -63,7 +63,7 @@ void* sf_malloc(size_t size) {
 	void* nextPointer = allocateBlock(listPointer,size);
 
     return nextPointer;
-    
+
 }
 
 void sf_free(void *ptr) {
