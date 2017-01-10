@@ -7,8 +7,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
-#include "sfmm.h"
-#include "hw3.h"
+#include "../include/sfmm.h"
  
 
 sf_free_header* freelist_head = NULL;
@@ -38,12 +37,14 @@ void* sf_malloc(size_t size) {
 		heapsize += PAGE_SIZE;
 
 		heapStart = sf_sbrk(heapsize);
-		heapEnd = sf_sbrk(0);
+		heapEnd = heapStart + heapsize;
 
-		printf("%x\n", heapStart);
-		printf("%x\n", heapEnd);
+		//printf("%p\n", heapStart);
+		//printf("%p\n", heapEnd); debuggingpurpose
 
-		freelist_head = (sf_free_header*)((double*) heapStart + 1);
+		freelist_head = (sf_free_header*)((double*) heapStart + 1); 
+
+		//Currently theres no freelist so next is null.
 		freelist_head->next = NULL;
 		freelist_head->prev = NULL;
 
@@ -59,3 +60,10 @@ void* sf_malloc(size_t size) {
 
 		current_free_head = freelist_head;
 	}
+
+	return NULL;
+}
+
+void sf_free(void* ptr) { 
+	return;
+}
