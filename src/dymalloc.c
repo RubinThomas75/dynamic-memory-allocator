@@ -26,35 +26,9 @@ void* sf_malloc(size_t size) {
 	if(!validateSize(size))
 		return NULL;
 
-	if(freelist_head == NULL){
-		size_t heapsize = 0;  //setheapSize to 0;
-		heapsize += PAGE_SIZE;
-
-		heapStart = sf_sbrk(heapsize);
-		heapEnd = heapStart + heapsize;
-
-		freelist_head = (sf_free_header*)((double*) heapStart); 
-
-		//Currently theres no freelist so next is null.
-		freelist_head->next = NULL;
-		freelist_head->prev = NULL;
-
-		freelist_head->header.alloc = 0;
-		freelist_head->header.block_size = (heapsize -16)>> 4;
-		// Requested block size field doesnt matter for free blocks
-
-		double* footerPointer = (double*)freelist_head + heapsize/8 + 1;
-
-		printf("%p\n", heapStart);
-		printf("%p\n", freelist_head);
-		printf("%p\n", footerPointer);
-
-		sf_footer* foot = (sf_footer*) footerPointer;
-		foot->alloc = 0;
-		foot->block_size = freelist_head->header.block_size;
-
-		current_free_head = freelist_head;
-	}
+	if(freelist_head == NULL)
+		current_free_head = createFreeListHead(size);
+	
 
 //Find a free block
 	sf_free_header* listPointer = findNextFit(current_free_head,size);
@@ -65,6 +39,7 @@ void* sf_malloc(size_t size) {
     return nextPointer;
 
 }
+
 
 void sf_free(void *ptr) {
 
@@ -280,6 +255,37 @@ size_t quadWord(size_t size){
     	return size;
     else
     	return size + (16 - size % 16);
+}
+
+void* createFreeListHead(size_t size){
+		size_t heapsize = 0;  //setheapSize to 0;
+
+		while(heapsize < size){
+			sf_sbrk(1);
+			heapsize += PAGE_SIZE;
+		}
+
+		heapStart = sf_sbrk(0);
+		heapEnd = heapStart + heapsize;
+
+		freelist_head = (sf_free_header*)((double*) heapStart); 
+
+		//Currently theres no freelist so next is null.
+		freelist_head->next = NULL;
+		freelist_head->prev = NULL;
+
+		freelist_head->header.alloc = 0;
+		//doesnt relal
+		freelist_head->header.block_size = (heapsize - 16) >> 4;
+		// Requested block size field doesnt matter for free blocks
+
+		double* footerPointer = (double*)freelist_head + heapsize/8 + 1;
+
+		sf_footer* foot = (sf_footer*) footerPointer;
+		foot->alloc = 0;
+		foot->block_size = freelist_head->header.block_size;
+
+		return freelist_head;
 }
 
 void* findNextFit(sf_free_header* ptr, size_t size){

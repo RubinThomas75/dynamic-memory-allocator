@@ -21,18 +21,18 @@
     +----------------------------------------------+
 
     +----------------+------------+-------+--------+
-    |  Padding Size| _Unused  | Block Size |  000a | <- Header Block
-    |    in bytes  |  28 bits |  in bytes  |       |
+    |  Padding Size| _Unused  | Block Size |  000a | <- Header Block Pointer 
+    |    in bytes  |  28 bits |  in bytes  |       |      ends in 8
     |     4 bits   |          |   28 bits  | 4 bits|
     +--------------+----------+------------+-------+
     |                                              | Content of
-    |         Payload and Padding                  | the payload
-    |           (N Memory Rows)                    |
+    |         Payload and Padding                  | the payload pointer
+    |           (N Memory Rows)                    |    ends in 0
     |                                              |
     |                                              |
     +---------------+---------------------+--------+
-    |     Unused    | Block Size in bytes |   000a | <- Footer Block
-    +---------------+---------------------+--------+s
+    |     Unused    | Block Size in bytes |   000a | <- Footer Block pointer
+    +---------------+---------------------+--------+s ends in 0
 
 */
 
@@ -179,7 +179,7 @@ void sf_varprint(void *data);
 
 void* searchFreeBlock(sf_free_header* ptr, size_t size);
 size_t pad(size_t size);
-
+void* createFreeListHead(size_t size);
 void* callocateBlock(sf_free_header* ptr, size_t size);
 int allocFixFreeHead(sf_free_header* ptr,size_t size);
 size_t locateNextAlloc(sf_free_header* ptr);
