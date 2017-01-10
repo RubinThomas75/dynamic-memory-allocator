@@ -41,33 +41,6 @@ void* sf_malloc(size_t size) {
 
 }
 
-
-void sf_free(void *ptr) {
-
-	if(!validatePTR(ptr))
-		return;
-
-	//Block address -8 to get header ptr
-	sf_header* headPtr = (sf_header*)((double*) ptr - 1);
-
-	if(!isFree(headPtr)){
-		headPtr->alloc = 0;
-		sf_footer* foot = (sf_footer*) ((double*)headPtr + (headPtr->block_size <<4)/8 - 1);
-		foot->alloc = 0;
-	} else{ 
-		fprintf(stderr,"Memory block is already free\n");
-		return;
-	}
-
-	//Coalesce blocks if possible
-	sf_free_header* newHead = coalesce(headPtr);
-
-	//Change references, think about the cases.
-	int result = freeFixFreeHead(newHead);
-
-	return;
-}
-
 void* sf_realloc(void *ptr, size_t size) {
 
 	if(size == 0){
@@ -215,10 +188,39 @@ void* sf_calloc(size_t nmemb, size_t size) {
 
 }
 
+void sf_free(void *ptr) {
+
+	if(!validatePTR(ptr))
+		return;
+
+	//Block address -8 to get header ptr
+	sf_header* headPtr = (sf_header*)((double*) ptr - 1);
+
+	if(!isFree(headPtr)){
+		headPtr->alloc = 0;
+		sf_footer* foot = (sf_footer*) ((double*)headPtr + (headPtr->block_size <<4)/8 - 1);
+		foot->alloc = 0;
+	} else{ 
+		fprintf(stderr,"Memory block is already free\n");
+		return;
+	}
+
+	//Coalesce blocks if possible
+	sf_free_header* newHead = coalesce(headPtr);
+
+	//Change references, think about the cases.
+	int result = freeFixFreeHead(newHead);
+
+	return;
+}
+
+
 //*************************//*************************//*******************//***
-//************************//*************************//********************//***
-//****************************HELPER FUNCTIONS *********************************
 //******************************************************************************
+//*******************************HELPER FUNCTIONS ******************************
+//******************************************************************************
+//************************//**************************//********************//**
+
 
 bool validateSize(size_t size){
 
@@ -523,36 +525,43 @@ sf_free_header* coalesce(sf_header* headPtr){
 	//Pointer to new head of block after coalescing
 	sf_free_header* returnPointer = (sf_free_header*)headPtr;
 
-	//Block Coalescing
-	double* cPointer1 = ((double*) headPtr) -1;//This pointer will change the prev block
-	double* cPointer2 = (double*) headPtr; // This one will change the current block
-	double* cPointer3 = (double*) headPtr + (headPtr->block_size << 4)/8 - 1; // This will also change teh current block
-	double* cPointer4 = (double*) headPtr + (headPtr->block_size << 4)/8; // This will change the next block
+	double* currBlockHead = (double*) headPtr; // POINTS TO CURRENT BLOCKHEADER
+	double* currBlockFoot = (double*) headPtr + (headPtr->block_size << 4)/8 - 1; // POINTS TO CURRENT BLOCK FOOTER
+	double* cPointer4 = (double*) headPtr + (headPtr->block_size << 4)/8; // POINTS TO NEXT BLOCK HEADER
+	double* prevBlockFoot; //was cp1
+	
+	if((void*)headPtr != heapStart)
+	    prevBlockFoot = ((double*) headPtr) -1;//POINTS TO PREVIOUS FOOTER
+	else
+		prevBlockFoot = NULL;
 
-	//Coalesce this block with the previous one if possible
-	if((cPointer1 != heapStart) && (((sf_footer*) cPointer1)->alloc == 0)){
+	//If we are not already at the heap start, and the previous block is also free,
+	//We can coalesce here
+	if((prevBlockFoot != NULL) && (((sf_footer*) prevBlockFoot)->alloc == 0)){
 		//Get block sizes
-		size_t blockSize1 = ((sf_footer*) cPointer1)->block_size << 4;
-		size_t blockSize2 = ((sf_header*) cPointer2)->block_size << 4;
+		size_t blockSize1 = ((sf_footer*) prevBlockFoot)->block_size << 4;
+		size_t blockSize2 = ((sf_header*) currBlockHead)->block_size << 4;
 		size_t newSize = (blockSize2 + blockSize1) >> 4;
 
 		//Clear the header and footer
-		((sf_footer*) cPointer1)->alloc = 0;
-		((sf_footer*) cPointer1)->block_size = 0;
-		((sf_header*) cPointer2)->alloc = 0;
-		((sf_header*) cPointer2)->block_size = 0;
+		((sf_footer*) prevBlockFoot)->alloc = 0;
+		((sf_footer*) prevBlockFoot)->block_size = 0;
+		((sf_header*) currBlockHead)->alloc = 0;
+		((sf_header*) currBlockHead)->block_size = 0;
+		((sf_footer*) currBlockFoot)->block_size = 0;
+		((sf_footer*) currBlockFoot)->alloc = 0;
 
 		//Set new header
-		cPointer1 -= blockSize1/8;
-		sf_header* newHeader = (sf_header*) cPointer1;
+		prevBlockFoot = prevBlockFoot - blockSize1/8;
+		sf_header* newHeader = (sf_header*) prevBlockFoot;
 		newHeader->alloc = 0;
 		newHeader->block_size= newSize;
 
 		returnPointer = (sf_free_header*) newHeader;
 
 		//Set new Footer
-		cPointer2 += (blockSize2/8 - 1);
-		sf_footer* newFooter = (sf_footer*) cPointer2;
+		currBlockHead = currBlockHead + (blockSize2/8 - 1);
+		sf_footer* newFooter = (sf_footer*) currBlockHead;
 		newFooter->alloc = 0;
 		newFooter->block_size = newSize;
 
@@ -575,20 +584,20 @@ sf_free_header* coalesce(sf_header* headPtr){
 
 	} else if ((((double*)cPointer4 + 1)!= heapEnd) && (((sf_header*) cPointer4)->alloc == 0)) {
 		//Get Block sizes
-		size_t blockSize1 = ((sf_footer*) cPointer3)->block_size << 4;
+		size_t blockSize1 = ((sf_footer*) currBlockFoot)->block_size << 4;
 		size_t blockSize2 = ((sf_header*) cPointer4)->block_size << 4;
 		size_t newSize = (blockSize2 + blockSize1) >> 4;
 		//Store references
 		sf_free_header* temp = ((sf_free_header*) cPointer4)->next; 
 
 		//Clear the header and footer
-		((sf_footer*) cPointer3)->alloc = 0;
-		((sf_footer*) cPointer3)->block_size = 0;
+		((sf_footer*) currBlockFoot)->alloc = 0;
+		((sf_footer*) currBlockFoot)->block_size = 0;
 		((sf_header*) cPointer4)->alloc = 0;
 		((sf_header*) cPointer4)->block_size = 0;
 		//Set new header
-		cPointer3 -= (blockSize1/8 - 1);
-		sf_header* newHeader = (sf_header*) cPointer3;
+		currBlockFoot -= (blockSize1/8 - 1);
+		sf_header* newHeader = (sf_header*) currBlockFoot;
 		newHeader->alloc = 0;
 		newHeader->block_size= newSize;
 

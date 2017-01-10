@@ -188,6 +188,7 @@ size_t quadWord(size_t size);
 bool isFree(sf_header* ptr);
 sf_free_header* coalesce(sf_header* headPtr);                
 bool validateSize(size_t size);
+bool validatePTR(void* ptr);
 void* findNextFit(sf_free_header* ptr, size_t size);
 void* allocateBlock(sf_free_header* ptr, size_t size);
 int freeListHeadFixMALLOC(sf_free_header* ptr,size_t size);
