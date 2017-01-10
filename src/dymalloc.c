@@ -30,7 +30,6 @@ void* sf_malloc(size_t size) {
 		current_free_head = createFreeListHead(size);
 	
 
-//Find a free block
 	sf_free_header* listPointer = findNextFit(current_free_head,size);
 
 	//Allocate to that block
