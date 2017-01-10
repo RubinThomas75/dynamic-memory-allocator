@@ -180,7 +180,9 @@ void sf_varprint(void *data);
 void* searchFreeBlock(sf_free_header* ptr, size_t size);
 size_t pad(size_t size);
                                                        
-
+bool validateSize(size_t size);
+void* findNextFit(sf_free_header* ptr, size_t size);
+void* allocateBlock(sf_free_header* ptr, size_t size);
 int freeListHeadFixMALLOC(sf_free_header* ptr,size_t size);
 sf_free_header* coalesceBlock(sf_header* ptr);
 

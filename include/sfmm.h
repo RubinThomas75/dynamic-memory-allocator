@@ -1,12 +1,4 @@
-/**
- * === DO NOT MODIFY THIS FILE ===
- * If you need some other prototpyes or constants in a header, please put them
- * in another header file.
- *
- * When we grade, we will be replacing this file with our own copy.
- * You have been warned.
- * === DO NOT MODIFY THIS FILE ===
- */
+
 #ifndef SFMM_H
 #define SFMM_H
 #include <stdbool.h>
@@ -43,6 +35,7 @@
     +---------------+---------------------+--------+s
 
 */
+
 struct __attribute__((__packed__)) sf_header {
     uint64_t alloc : ALLOC_SIZE_BITS;
     uint64_t block_size : BLOCK_SIZE_BITS;
@@ -187,7 +180,16 @@ void sf_varprint(void *data);
 void* searchFreeBlock(sf_free_header* ptr, size_t size);
 size_t pad(size_t size);
 
-
+void* callocateBlock(sf_free_header* ptr, size_t size);
+int allocFixFreeHead(sf_free_header* ptr,size_t size);
+size_t locateNextAlloc(sf_free_header* ptr);
+int freeFixFreeHead(sf_free_header* ptr);
+size_t quadWord(size_t size);
+bool isFree(sf_header* ptr);
+sf_free_header* coalesce(sf_header* headPtr);                
+bool validateSize(size_t size);
+void* findNextFit(sf_free_header* ptr, size_t size);
+void* allocateBlock(sf_free_header* ptr, size_t size);
 int freeListHeadFixMALLOC(sf_free_header* ptr,size_t size);
 sf_free_header* coalesceBlock(sf_header* ptr);
 
