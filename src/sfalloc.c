@@ -92,11 +92,13 @@ int main(int argc, char *argv[]) {
     // Print out title for first test
     printf("=== Test1: Allocation test ===\n");
     // Test #1: Allocate an integer
-    int *value1 = sf_malloc(sizeof(int));
-    null_check(value1, sizeof(int));
+    int *value1 = sf_malloc(4096);
+    null_check(value1, 4096);
     payload_check(value1);
     // Print out the allocator block
     sf_varprint(value1);
+
+    return;
     press_to_cont();
 
     // Now assign a value

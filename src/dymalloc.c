@@ -268,13 +268,15 @@ size_t quadWord(size_t size){
 
 void* createFreeListHead(size_t size){
 		size_t heapsize = 0;  //setheapSize to 0;
-
-		while(heapsize < size){
-			sf_sbrk(1);
+		void* x = sf_sbrk(0);
+		printf("%p\n", x);
+		while(heapsize < size+16){
+			printf("%p\n", sf_sbrk(1));
 			heapsize += PAGE_SIZE;
 		}
 
 		heapStart = sf_sbrk(0);
+		printf("%p\n", heapStart);
 		heapEnd = heapStart + heapsize;
 
 		freelist_head = (sf_free_header*)((double*) heapStart); 
