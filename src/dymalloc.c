@@ -348,7 +348,6 @@ void* allocateBlock(sf_free_header* ptr, size_t size){
 
 	if(result > 0) {
 		blockPointer->block_size = (((blockPointer->block_size) << 4) + result) >> 4;
-		printf("%s\n", "PADDED PADDED PADDED PADDED PADDED PADDED"); //DDDDDDDDDDDEEEEEEEEEEEEBUGGGING PURPOSESSSSSSS
 	}
 
 	pointer += ((blockPointer->block_size << 4) / 8) - 1;
@@ -586,19 +585,24 @@ sf_free_header* coalesce(sf_header* headPtr){
 		toReturn = (sf_free_header*) newHeader;
 
 		//Set new Footer
-		nextBlockHead += (blockSize2/8 - 1);
-		sf_footer* newFooter = (sf_footer*) nextBlockHead;
+		sf_footer* newFooter = (sf_footer*) (nextBlockHead + blockSize2/8 - 1);
 		newFooter->alloc = 0;
 		newFooter->block_size = newSize;
 
 		//Set references
-		//THERE IS A PROBLEM HEREEEEEEEEEEEEEEEEEEEEEEE EEEEEEEEEEEEEEEEEEEEEEEEEEEEE EEE
 		if((sf_free_header*) newHeader != freelist_head){
+
+			if((sf_free_header*)nextBlockHead == freelist_head){
+				void* temp2 = freelist_head->next;
+				freelist_head = newHeader;
+				freelist_head->next = temp2;
+			} else {
 			temp = freelist_head;
 			freelist_head = ((sf_free_header*) newHeader);
 			freelist_head->next = temp;
 			freelist_head->prev = NULL;
 			temp->prev = freelist_head;
+			}
 		}
 
 
@@ -609,7 +613,6 @@ sf_free_header* coalesce(sf_header* headPtr){
 int freeFixFreeHead(sf_free_header* ptr){
 
 	sf_free_header* next = ptr->next;
-
 
 	if(ptr != freelist_head){
 		sf_free_header* temp = freelist_head;
