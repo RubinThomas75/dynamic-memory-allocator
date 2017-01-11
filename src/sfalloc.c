@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
     // Print out the allocator block
     sf_varprint(value1);
 
+    sf_free(value1);
     press_to_cont();
 
     int *value20 = sf_malloc(8);

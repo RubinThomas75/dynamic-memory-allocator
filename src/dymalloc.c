@@ -98,13 +98,8 @@ void* sf_realloc(void *ptr, size_t size) {
 		//Change references
 		sf_free_header* newFree = (sf_free_header*) newHead;
 
-		#ifdef ADDRESS
 
-		sf_free_header* nextFree = (sf_free_header*) ((double*)origFoot + 1);
-		nextFree->prev = newFree;
-		newFree->next = nextFree;
 
-		#else // LIFO
 
 		sf_free_header* temp = freelist_head;
 		freelist_head = newFree;
@@ -112,7 +107,6 @@ void* sf_realloc(void *ptr, size_t size) {
 		freelist_head->prev = NULL;
 		temp->prev = freelist_head;
 
-		#endif
 
 		//Change original header
 		headPtr->block_size = quadWord(size) >> 4;
@@ -324,16 +318,10 @@ void* findNextFit(sf_free_header* ptr, size_t size){
 
 		heapEnd = sf_sbrk(0);
 
-		#ifdef ADDRESS
-		temp->next = freehead;
-		freehead->next = NULL;
-		freehead->prev = freelist_head;
-		#else
 		freelist_head = freehead;
 		freehead->next = temp;
 		freehead->prev = NULL;
 		temp->prev = freelist_head;
-		#endif /*ADDRESS*/
 
 		sf_footer* newFoot = (sf_footer*) ((double*)freehead + (freehead->header.block_size<<4)/8 -1);
 		newFoot->alloc = 0;
@@ -356,8 +344,12 @@ void* allocateBlock(sf_free_header* ptr, size_t size){
 	//allocate header
 	sf_header* blockPointer = (sf_header*) ptr;
 	blockPointer->alloc = 1;
-	blockPointer->block_size = quadWord(16 + size) >> 4;
-	if(result > 0) blockPointer->block_size = (((blockPointer->block_size) << 4) + result) >> 4;
+	blockPointer->block_size = (16 + quadWord(size)) >> 4;
+
+	if(result > 0) {
+		blockPointer->block_size = (((blockPointer->block_size) << 4) + result) >> 4;
+		printf("%s\n", "PADDED PADDED PADDED PADDED PADDED PADDED"); //DDDDDDDDDDDEEEEEEEEEEEEBUGGGING PURPOSESSSSSSS
+	}
 
 	pointer += ((blockPointer->block_size << 4) / 8) - 1;
 
@@ -430,14 +422,13 @@ int allocFixFreeHead(sf_free_header* ptr,size_t size){
 		freelist_head = (sf_free_header*) ((char*) ptr + quadWord(size) + 16);
 
 		freelist_head->header.alloc = 0;
-		freelist_head->header.block_size = quadWord((ptr->header.block_size<< 4) - size - 16) >> 4;	
+		freelist_head->header.block_size = quadWord((ptr->header.block_size<< 4) - quadWord(size) - 16) >> 4;	
 
-		//Same case whether LIFO or ADDRESS
 		freelist_head->next = tempNext;
 		freelist_head->prev = NULL;	
 
 		sf_footer* nextFoot = (sf_footer*) ((char*) freelist_head + (freelist_head->header.block_size<<4) - 8);
-		nextFoot->alloc = 0x0;
+		nextFoot->alloc = 0;
 		nextFoot->block_size = freelist_head->header.block_size;
 
 		result = 0;
@@ -460,16 +451,12 @@ int allocFixFreeHead(sf_free_header* ptr,size_t size){
 		newFreeBlock->header.alloc = 0;
 		newFreeBlock->header.block_size = quadWord((ptr->header.block_size << 4) - size - 16) >> 4;
 
-		#ifdef ADDRESS
-		newFreeBlock->next = ptr->next;
-		newFreeBlock->prev = freelist_head;
-		#else //LIFO
+
 		sf_free_header* temp = freelist_head;
 		freelist_head = newFreeBlock;
 		freelist_head->next = temp;
 		freelist_head->prev = NULL;
 		temp->prev = freelist_head;
-		#endif /*ADDRESS*/
 
 		result = 0;
 
@@ -480,18 +467,13 @@ int allocFixFreeHead(sf_free_header* ptr,size_t size){
 		sf_free_header* newNext = (ptr->next)->next;
 		sf_free_header* newFreeBlock = ptr->next;
 
-		#ifdef ADDRESS
-		newFreeBlock->next = newNext;
-		newFreeBlock->prev = freelist_head;	
 
-		#else //LIFO
 		sf_free_header* temp = freelist_head;
 		freelist_head = newFreeBlock;
 		freelist_head->next = temp;
 		freelist_head->prev = NULL;
 		temp->prev = freelist_head;
 
-		#endif /*ADDRESS*/
 
 	} else {
 		result = 5;
@@ -582,6 +564,7 @@ sf_free_header* coalesce(sf_header* headPtr){
 	//If we arent at the end of Memory and if the next block isnt allocated already, try and coalesce with that block.
 	//Need to fix this so both coalescing is possible.
 	} else if ((((double*)nextBlockHead)!= heapEnd) && (((sf_header*) nextBlockHead)->alloc == 0)) {
+
 		//Get Block sizes
 		size_t blockSize1 = ((sf_footer*) currBlockFoot)->block_size << 4;
 		size_t blockSize2 = ((sf_header*) nextBlockHead)->block_size << 4;
@@ -609,12 +592,7 @@ sf_free_header* coalesce(sf_header* headPtr){
 		newFooter->block_size = newSize;
 
 		//Set references
-		#ifdef ADDRESS
-		((sf_free_header*) newHeader)->next = temp;
-		temp->prev = (sf_free_header*) newHeader;
-
-		#else //LIFO
-
+		//THERE IS A PROBLEM HEREEEEEEEEEEEEEEEEEEEEEEE EEEEEEEEEEEEEEEEEEEEEEEEEEEEE EEE
 		if((sf_free_header*) newHeader != freelist_head){
 			temp = freelist_head;
 			freelist_head = ((sf_free_header*) newHeader);
@@ -623,7 +601,6 @@ sf_free_header* coalesce(sf_header* headPtr){
 			temp->prev = freelist_head;
 		}
 
-		#endif /*ADDRESS*/
 
 	}
 	return toReturn;
@@ -633,11 +610,7 @@ int freeFixFreeHead(sf_free_header* ptr){
 
 	sf_free_header* next = ptr->next;
 
-	#ifdef ADDRESS
 
-	//Nothing to be done here
-
-	#else //LIFO
 	if(ptr != freelist_head){
 		sf_free_header* temp = freelist_head;
 		freelist_head = ptr;
@@ -646,6 +619,5 @@ int freeFixFreeHead(sf_free_header* ptr){
 		temp->prev = freelist_head;
 	}
 
-	#endif /*ADDRESS*/
 
 }
