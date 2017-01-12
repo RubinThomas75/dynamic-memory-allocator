@@ -298,36 +298,34 @@ void* findNextFit(sf_free_header* ptr, size_t size){
 		return freehead;
 	}
 
-	#ifdef NEXT
-		freehead = ptr;
-	#endif /*NEXT*/
 
 	while(freehead->next != NULL){
 		freehead = freehead->next;
-		if((freehead->header.block_size << 4)> size) break;	
+		if((freehead->header.block_size << 4) >= (size+16)) 
+			return freehead;	//Bug check this
 	}
 
 	if(freehead->next == NULL){
 		sf_free_header* temp = freelist_head;
 
-		freehead = sf_sbrk(size + (4096 - size % 4096));
-		freehead = (sf_free_header*)((double *)freehead + 1 );
+		void* newStart = sf_sbrk(0);
+		sf_free_header* newBlockFreeHeader;
+		int blockSize = 0;
 
-		freehead->header.alloc = 0;
-		freehead->header.block_size = (quadWord(size) + 16) >> 4;
+		while(blockSize < (size+16)){
+			heapEnd = sf_sbrk(1);
+			sf_free_header* newBlock = (sf_free_header*)newStart;
 
-		heapEnd = sf_sbrk(0);
+			newBlock->header.block_size = PAGE_SIZE;
 
-		freelist_head = freehead;
-		freehead->next = temp;
-		freehead->prev = NULL;
-		temp->prev = freelist_head;
+		    newBlockFreeHeader = coalesce(newBlock);              //See if it can be merged with the previous block
+			blockSize += newBlockFreeHeader->header.block_size;
+		}
 
-		sf_footer* newFoot = (sf_footer*) ((double*)freehead + (freehead->header.block_size<<4)/8 -1);
-		newFoot->alloc = 0;
-		newFoot->block_size = freehead->header.block_size;
+		freehead = newBlockFreeHeader;
 
-		freehead = freelist_head;
+
+
 	}
 
 	return freehead;
@@ -597,11 +595,11 @@ sf_free_header* coalesce(sf_header* headPtr){
 				freelist_head = newHeader;
 				freelist_head->next = temp2;
 			} else {
-			temp = freelist_head;
-			freelist_head = ((sf_free_header*) newHeader);
-			freelist_head->next = temp;
-			freelist_head->prev = NULL;
-			temp->prev = freelist_head;
+				temp = freelist_head;
+				freelist_head = ((sf_free_header*) newHeader);
+				freelist_head->next = temp;
+				freelist_head->prev = NULL;
+				temp->prev = freelist_head;
 			}
 		}
 

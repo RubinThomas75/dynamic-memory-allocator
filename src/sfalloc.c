@@ -98,16 +98,9 @@ int main(int argc, char *argv[]) {
     // Print out the allocator block
     sf_varprint(value1);
 
-    sf_free(value1);
     press_to_cont();
 
-    int *value20 = sf_malloc(8);
-    null_check(value20, 8);
-    payload_check(value20);
-    // Print out the allocator block
-    sf_varprint(value20);
 
-    return;
 
     // Now assign a value
     printf("=== Test2: Assignment test ===\n");
